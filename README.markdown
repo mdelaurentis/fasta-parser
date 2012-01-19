@@ -74,17 +74,17 @@ Show
 
 You can see an individual entry:
 
-  mike@trc459 ~/src/fasta-parser
-  > ./parse_fasta show --nth 1000 vertebrate_mammalian.2.rna.fna
-  >gi|291384767|ref|XM_002709208.1| PREDICTED: Oryctolagus cuniculus hypothetical protein LOC100345993 (LOC100345993), mRNA
-  ATGGCGGGAGGGAAGGCCACCTTGGAATTTCTTCCCGAGTCACCCCCGGGGACGACGAGAGGGGAAAG
-  -- snip --
-  mike@trc459 ~/src/fasta-parser
+    mike@trc459 ~/src/fasta-parser
+    > ./parse_fasta show --nth 1000 vertebrate_mammalian.2.rna.fna
+    >gi|291384767|ref|XM_002709208.1| PREDICTED: Oryctolagus cuniculus hypothetical protein LOC100345993 (LOC100345993), mRNA
+    ATGGCGGGAGGGAAGGCCACCTTGGAATTTCTTCCCGAGTCACCCCCGGGGACGACGAGAGGGGAAAG
+    -- snip --
+    mike@trc459 ~/src/fasta-parser
 
-Or a range of entries
+  Or a range of entries
 
-  ./parse_fasta show --start 30 --stop 40 vertebrate_mammalian.2.rna.fna
+    ./parse_fasta show --start 30 --stop 40 vertebrate_mammalian.2.rna.fna
 
-Or all the entries:
+  Or all the entries:
 
-  ./parse_fasta show vertebrate_mammalian.2.rna.fna
+    ./parse_fasta show vertebrate_mammalian.2.rna.fna
