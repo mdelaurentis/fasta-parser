@@ -54,20 +54,20 @@ Count
 
 `parse_fasta count <infile>` while print the number of entries in infile. It will also create the index if it doesn't already exist. You can use this to see the speedup that the index provides:
 
-  > time ./parse_fasta count vertebrate_mammalian.2.rna.fna 
-  Couldn't load index at vertebrate_mammalian.2.rna.fna.idx
-  I have 30935 entries
+    > time ./parse_fasta count vertebrate_mammalian.2.rna.fna 
+    Couldn't load index at vertebrate_mammalian.2.rna.fna.idx
+    I have 30935 entries
+  
+    real	0m2.374s
+    user	0m2.315s
+    sys	0m0.055s
+    mike@trc459 ~/src/fasta-parser
+    > time ./parse_fasta count vertebrate_mammalian.2.rna.fna 
+    I have 30935 entries
 
-  real	0m2.374s
-  user	0m2.315s
-  sys	0m0.055s
-  mike@trc459 ~/src/fasta-parser
-  > time ./parse_fasta count vertebrate_mammalian.2.rna.fna 
-  I have 30935 entries
-
-  real	0m0.171s
-  user	0m0.151s
-  sys	0m0.018s
+    real	0m0.171s
+    user	0m0.151s
+    sys	0m0.018s
 
 Show
 ----
