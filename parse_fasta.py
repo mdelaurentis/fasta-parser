@@ -5,29 +5,68 @@ from FastaParser import FastaParser
 import sys
 import argparse
 
+# Functions for handling actions from the subparsers. Each function
+# corresponds to a command that's available on the command line, and
+# each function expects to get the results from parse_args() as its
+# argument.
+
+def do_index(args):
+    FastaParser(args.infile).save_index()
+
+def do_clear(args):
+    FastaParser(args.infile).clear_index()
+
+def do_show(args):
+    parser = FastaParser(args.infile)
+    if args.nth is not None:
+        print parser.entry(args.nth)
+    elif args.start is None and args.stop is None:
+        for e in parser.entries():
+            print e
+    else:
+        for e in parser.entry_range(args.start, args.stop):
+            print e
+
+def do_count(args):
+    print "I have %d entries" % len(FastaParser(args.infile))
+
+# Set up the argument parser, parse the command line args, and run the
+# specified action.
+
+# Main parser
 parser = argparse.ArgumentParser(description='Browse a fasta file')
-parser.add_argument("--start", help="The index of the first entry to show")
-parser.add_argument("--stop", help="The index of the last entry to show")
-parser.add_argument("--first", help="Show just the first entry")
-parser.add_argument("--last", help="Show just the last entry")
-parser.add_argument("--count",
-                    help="Just show the number of entries in the file",
-                    action="store_const",
-                    const=True)
-parser.add_argument("--nth", help="Show the nth entry", type=int)
+subparsers = parser.add_subparsers()
+# Every action needs an infile
 parser.add_argument("infile")
+
+# The index action
+parser_index = subparsers.add_parser("index",
+                                     help="Regenerate the index for infile")
+parser_index.set_defaults(func=do_index)
+
+# The clear action
+parser_clear = subparsers.add_parser("clear",
+                                     help="Clear the index for infile")
+parser_clear.set_defaults(func=do_clear)
+
+# The show action
+parser_show = subparsers.add_parser("show", help="Show some entries")
+parser_show.add_argument("--start",
+                          help="The index of the first entry to show",
+                          type=int)
+parser_show.add_argument("--stop",
+                          help="The index of the last entry to show",
+                          type=int)
+parser_show.add_argument("--nth",
+                          help="The index of the entry to show",
+                          type=int)
+parser_show.set_defaults(func=do_show)
+
+# The count action
+parser_count = subparsers.add_parser(
+    "count",
+    help="Print the number of entries in the file")
+parser_count.set_defaults(func=do_count)
+
 args = parser.parse_args()
-
-parser = FastaParser(args.infile)
-
-parser.save_index()
-
-if args.count:
-    print "I found %d entries" % len(parser)
-
-if args.nth is not None:
-    print "Nth entry: %s" % parser.entry(args.nth)
-
-
-
-
+args.func(args)

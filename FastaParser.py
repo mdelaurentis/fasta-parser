@@ -4,6 +4,7 @@ import unittest
 import pickle
 from itertools import dropwhile, takewhile
 import os
+import sys
 
 class Entry:
     """Represents an entry in a FASTA file, including the header
@@ -38,18 +39,19 @@ class FastaParser:
                 self.index = pickle.load(infile)
             infile.close()
         except:
-            print "Couldn't load index"
+            sys.stderr.write("Couldn't load index at %s\n" % self.index_filename)
 
-    def save_index(self):
+    def save_index(self, force=False):
         """Saves the index to the filename specified in my
         index_filename property."""
+
         if self.index is None or force:
             for e in self.entries(): pass
         with open(self.index_filename, "w") as outfile:
             pickle.dump(self.index, outfile)
         outfile.close()
 
-    def flush_index(self):
+    def clear_index(self):
         """Removes my index file."""
         os.remove(self.index_filename)
         
@@ -111,6 +113,9 @@ class FastaParser:
                 # sequence line, and append it to the current entry's
                 # sequence
                 else:
+                    if entry is None:
+                        raise Exception(
+                            "%s does not appear to be a valid FASTA file" % self.filename)
                     entry.sequence += line
         index.append(pos)
         yield entry
@@ -136,6 +141,7 @@ class FastaParser:
         print "The last one is ", len(self)
         return self.entry(len(self))
 
+
     def _entry_range_from_index(self, start, stop):
         """Parses the entries in the given range from the file using
         the index (both start and stop are inclusive). This should be
@@ -149,7 +155,8 @@ class FastaParser:
 
         startpos = None
         stoppos = None
-
+        print "Getting range from", start, "to", stop
+        print "Index is ", len(self.index)
         # Set startpos and stoppos if they are within the range.
         if start > 0:
             startpos = self.index[start-1] 
@@ -184,6 +191,8 @@ class FastaParser:
 
     def count(self):
         """Returns the number of entries in the file."""
+        if self.index is not None:
+            return len(self.index) - 1
         return sum(1 for e in self.entries())
 
     def __len__(self):
