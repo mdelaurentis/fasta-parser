@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 
 import unittest
+import pickle
 from itertools import dropwhile, takewhile
+import os
 
 class Entry:
+    """Represents an entry in a FASTA file, including the header
+    information and the sequence."""
+    
     def __init__(self, gi, accession, description, sequence=""):
         self.gi = gi
         self.accession = accession
@@ -17,11 +22,37 @@ class Entry:
         return ">" + "|".join(header_parts) + "\n" + self.sequence
             
 class FastaParser:
+    """Parses fasta files. Once we reach the end of a file foo, we
+    index the entries in the file and save the index to foo.idx so
+    that we can quickly access random entries in the file later."""    
 
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, index_filename=None):
         """Create a parser that operates on the given file."""
         self.filename = filename
+        self.index_filename = index_filename
+        if self.index_filename is None:
+            self.index_filename = filename + ".idx"
+        self.index = None
+        try:
+            with open(self.index_filename) as infile:
+                self.index = pickle.load(infile)
+            infile.close()
+        except:
+            print "Couldn't load index"
 
+    def save_index(self):
+        """Saves the index to the filename specified in my
+        index_filename property."""
+        if self.index is None or force:
+            for e in self.entries(): pass
+        with open(self.index_filename, "w") as outfile:
+            pickle.dump(self.index, outfile)
+        outfile.close()
+
+    def flush_index(self):
+        """Removes my index file."""
+        os.remove(self.index_filename)
+        
     def _parse_header_line(self, text):
         """Attempt to parse the given text as a FASTA header line and
         create an Entry out of it. If the line does not appear to be a
@@ -34,11 +65,33 @@ class FastaParser:
         (_, gi, _, accession, description) = parts
         return Entry(long(gi), accession, description)
 
-    def entries(self, start=None, stop=None):
-        """Returns a generator of the sequence of entries in the file."""
+    def entries(self):
+        """Returns a generator of the sequence of all
+        the entries in the file."""
+        return self._parse()
+
+    def _parse(self, start=None, stop=None):
+        """Returns a generator of the sequence of entries in the
+        file. If start is provided, it must be the byte offset into
+        the file where I should start parsing. If stop is provided, it
+        must be the byte offset where I should stop parsing. If I
+        reach the end of the file, I will set my index property so
+        that the ith entry in the index points to the position of the
+        ith entry in the file."""
+        
         entry = None
+        counter = 0
+        index = []
+
         with open(self.filename) as infile:
-            for line in infile:
+            if start is not None:
+                infile.seek(start)
+            while True:
+                pos = infile.tell()
+
+                line = infile.readline()
+                if line == "" or (stop is not None and pos >= stop):
+                    break
                 line = line.rstrip("\n")
 
                 # Attempt to parse the line as a header; if we get
@@ -52,14 +105,16 @@ class FastaParser:
                     if entry is not None:
                         yield entry
                     entry = thisentry
+                    index.append(pos)
 
                 # Otherwise if it's not an entry assume it's a
                 # sequence line, and append it to the current entry's
                 # sequence
                 else:
                     entry.sequence += line
-
+        index.append(pos)
         yield entry
+        self.index = index
         infile.close()
         return
 
@@ -78,22 +133,36 @@ class FastaParser:
     def last(self):
         """Returns the last entry in the file or None if there are no
         entries."""
+        print "The last one is ", len(self)
+        return self.entry(len(self))
 
-        # Don't just get the entry where the index is the same as the
-        # count of entries; that would require iterating through the
-        # entries twice.
-        result = None
-        for e in self.entries():
-            result = e
-        return result
+    def _entry_range_from_index(self, start, stop):
+        """Parses the entries in the given range from the file using
+        the index (both start and stop are inclusive). This should be
+        much faster than _entry_range_from_stream for ranges that skip
+        over lots of entries in the top of the file."""
 
-    def entry_range(self, start, stop):
-        """Returns the subsequence of entries in the range from start
-        to stop (both inclusive), starting at 1 for the first
-        entry. If start or stop is outside the actual range of
-        indices, simply ignores the parts of the range that are
-        invalid."""
+        # If start is after the acceptable range or stop is before it,
+        # we shouldn't do anything at all.
+        if start > self.count() or stop < 1:
+            return ()
 
+        startpos = None
+        stoppos = None
+
+        # Set startpos and stoppos if they are within the range.
+        if start > 0:
+            startpos = self.index[start-1] 
+        if stop <= self.count():
+            stoppos = self.index[stop]
+        
+        return self._parse(startpos, stoppos)
+
+    def _entry_range_from_stream(self, start, stop):
+        """Returns the entries in the given range (inclusive) from the
+        file without using an index. This will only be called on files
+        that are not yet indexed."""
+        
         i = 1
         for e in self.entries():
             if i > stop:
@@ -101,6 +170,17 @@ class FastaParser:
             if i >= start:
                 yield e
             i += 1
+            
+    def entry_range(self, start, stop):
+        """Returns the subsequence of entries in the range from start
+        to stop (both inclusive), starting at 1 for the first
+        entry. If start or stop is outside the actual range of
+        indices, simply ignores the parts of the range that are
+        invalid."""
+
+        if self.index is None:
+            return self._entry_range_from_stream(start, stop)
+        return self._entry_range_from_index(start, stop)
 
     def count(self):
         """Returns the number of entries in the file."""
@@ -109,6 +189,10 @@ class FastaParser:
     def __len__(self):
         """Returns the number of entries in the file."""
         return self.count()
+
+################################################################################
+# Tests
+
 
 class TestFastaParser(unittest.TestCase):
 
@@ -168,6 +252,7 @@ class TestFastaParser(unittest.TestCase):
         self.assertEquals(expected, got)
 
     def test_invalid_entry(self):
+        e = self.parser().entry(17)
         self.assertIsNone(self.parser().entry(17))
 
     def test_first(self):
@@ -179,6 +264,9 @@ class TestFastaParser(unittest.TestCase):
         expected = self.sample_gis[4]
         got = self.parser().last().gi
         self.assertEquals(expected, got)
+
+    def test_index(self):
+        self.parser().save_index()
         
 if __name__ == '__main__':
     unittest.main()

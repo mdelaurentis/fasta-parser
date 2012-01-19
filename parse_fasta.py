@@ -20,12 +20,14 @@ args = parser.parse_args()
 
 parser = FastaParser(args.infile)
 
+parser.save_index()
+
 if args.count:
     print "I found %d entries" % len(parser)
 
 if args.nth is not None:
     print "Nth entry: %s" % parser.entry(args.nth)
 
-#for e in fp.entries():
-#    print e
+
+
 
