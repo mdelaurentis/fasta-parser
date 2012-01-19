@@ -6,11 +6,14 @@ from itertools import dropwhile, takewhile
 import os
 import sys
 
+class IndexException(Exception):
+    pass
+
 class Entry:
     """Represents an entry in a FASTA file, including the header
     information and the sequence."""
     
-    def __init__(self, gi, accession, description, sequence=""):
+    def __init__(self, gi, accession, description, sequence="", pos=None):
         self.gi = gi
         self.accession = accession
         self.description = description
@@ -38,22 +41,25 @@ class FastaParser:
             with open(self.index_filename) as infile:
                 self.index = pickle.load(infile)
             infile.close()
-        except:
-            sys.stderr.write("Couldn't load index at %s\n" % self.index_filename)
+        except IOError:
+            sys.stderr.write(
+                "Couldn't load index at %s, proceeding without index for %s\n"
+                % (self.index_filename, self.filename))
 
     def save_index(self, force=False):
         """Saves the index to the filename specified in my
         index_filename property."""
-
-        if self.index is None or force:
-            for e in self.entries(): pass
+        self.index = [e.pos for e in self.entries()]
         with open(self.index_filename, "w") as outfile:
             pickle.dump(self.index, outfile)
         outfile.close()
 
     def clear_index(self):
         """Removes my index file."""
-        os.remove(self.index_filename)
+        try:
+            os.remove(self.index_filename)
+        except:
+            raise IndexException("Couldn't clear index")
         
     def _parse_header_line(self, text):
         """Attempt to parse the given text as a FASTA header line and
@@ -83,7 +89,6 @@ class FastaParser:
         
         entry = None
         counter = 0
-        index = []
 
         with open(self.filename) as infile:
             if start is not None:
@@ -104,10 +109,10 @@ class FastaParser:
                 # previous entry (unless this is the first entry) and
                 # then set this line as our current entry.
                 if thisentry is not None:
+                    thisentry.pos = pos
                     if entry is not None:
                         yield entry
                     entry = thisentry
-                    index.append(pos)
 
                 # Otherwise if it's not an entry assume it's a
                 # sequence line, and append it to the current entry's
@@ -117,9 +122,8 @@ class FastaParser:
                         raise Exception(
                             "%s does not appear to be a valid FASTA file" % self.filename)
                     entry.sequence += line
-        index.append(pos)
+
         yield entry
-        self.index = index
         infile.close()
         return
 
@@ -138,7 +142,6 @@ class FastaParser:
     def last(self):
         """Returns the last entry in the file or None if there are no
         entries."""
-        print "The last one is ", len(self)
         return self.entry(len(self))
 
 
@@ -155,8 +158,6 @@ class FastaParser:
 
         startpos = None
         stoppos = None
-        print "Getting range from", start, "to", stop
-        print "Index is ", len(self.index)
         # Set startpos and stoppos if they are within the range.
         if start > 0:
             startpos = self.index[start-1] 
@@ -192,7 +193,7 @@ class FastaParser:
     def count(self):
         """Returns the number of entries in the file."""
         if self.index is not None:
-            return len(self.index) - 1
+            return len(self.index)
         return sum(1 for e in self.entries())
 
     def __len__(self):

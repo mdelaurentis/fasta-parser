@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from fasta import FastaParser
+from fasta import FastaParser, IndexException
 import sys
 import argparse
 
@@ -14,7 +14,10 @@ def do_index(args):
     FastaParser(args.infile).save_index()
 
 def do_clear(args):
-    FastaParser(args.infile).clear_index()
+    try:
+        FastaParser(args.infile).clear_index()
+    except IndexException, e:
+        print e
 
 def do_show(args):
     parser = FastaParser(args.infile)
