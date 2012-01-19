@@ -14,6 +14,7 @@ parser.add_argument("--count",
                     help="Just show the number of entries in the file",
                     action="store_const",
                     const=True)
+parser.add_argument("--nth", help="Show the nth entry", type=int)
 parser.add_argument("infile")
 args = parser.parse_args()
 
@@ -22,6 +23,8 @@ parser = FastaParser(args.infile)
 if args.count:
     print "I found %d entries" % len(parser)
 
+if args.nth is not None:
+    print "Nth entry: %s" % parser.entry(args.nth)
 
 #for e in fp.entries():
 #    print e
