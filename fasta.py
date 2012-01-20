@@ -7,7 +7,7 @@ import os
 import sys
 import logging
 
-# Set up logging. TODO: I'm not to familiar with Python logging; there
+# Set up logging. TODO: I'm not too familiar with Python logging; there
 # may be a more idiomatic way to do it, in a config file or something.
 logger = logging.getLogger("fasta")
 hdlr = logging.FileHandler('fasta.log')
@@ -17,6 +17,8 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.WARNING)
 
 class OutOfBoundsException(Exception):
+    """An exception thrown when someone attempts to access by index an
+    entry that does not exist in the file."""
     pass
 
 class Entry:
@@ -36,15 +38,15 @@ class Entry:
         return ">" + "|".join(header_parts) + "\n" + self._format_sequence()
 
     def _format_sequence(self, max_len=80):
+        """Format the sequence so that each line is at most max_len
+        characters long."""
         subsequences = []
         for i in range(0, len(self.sequence), max_len):
             subsequences.append(self.sequence[i:i+max_len])
         return "\n".join(subsequences)
             
 class FastaParser:
-    """Parses fasta files. Once we reach the end of a file foo, we
-    index the entries in the file and save the index to foo.idx so
-    that we can quickly access random entries in the file later."""    
+    """Parses fasta files."""
 
     def __init__(self, filename=None, index_filename=None):
         """Create a parser that operates on the given file."""
@@ -89,15 +91,6 @@ class FastaParser:
         (_, gi, _, accession, description) = parts
         return Entry(long(gi), accession, description)
 
-    def _position(self, entry_num):
-        if entry_num < 1:
-            raise OutOfBoundsException("Index must be greater than 0: " + str(entry_num))
-        if self.index is None:
-            return None
-        if entry_num > len(self.index):
-            raise OutOfBoundsException("No entry with number " + str(entry_num))
-        return self.index[entry_num - 1]
-
     def entries(self, offset=None):
         """Returns a generator of the sequence of entries in the
         file. If offset is provided, it must be the byte offset into
@@ -106,8 +99,11 @@ class FastaParser:
         entry = None
         
         with open(self.filename) as infile:
+
+            # If an offset was supplied, start parsing there.
             if offset is not None:
                 infile.seek(offset)
+                
             while True:
                 pos = infile.tell()
                 line = infile.readline()
@@ -133,14 +129,17 @@ class FastaParser:
                 # sequence line, and append it to the current entry's
                 # sequence
                 else:
+                    # If there's no entry then that means we saw a
+                    # sequence line before a header line, which is
+                    # invalid.
                     if entry is None:
                         raise Exception(
                             "%s does not appear to be a valid FASTA file" % self.filename)
                     entry.sequence += line
-
+                    
+        infile.close()
         if entry is not None:
             yield entry
-        infile.close()
         return
 
     def entry(self, i):
@@ -148,14 +147,21 @@ class FastaParser:
         i is outside the acceptable range."""
 
         if i < 1:
-            raise OutOfBoundsException("Index must be greater than 0: " + str(i))
+            raise OutOfBoundsException(
+                "Index must be greater than 0: " + str(i))
+        
         entries = None
 
+        # If I am using an index, I can check to make sure that i is
+        # in the appropriate range. Then find the offset of the entry
+        # and skip to that point in the file.
         if self.index is not None:
             if i > len(self):
                 raise OutOfBoundsException("No entry with number " + str(i))
             offset = self.index[i - 1]
             entries = islice(self.entries(offset), 0, 1)
+
+        # Otherwise I need to 
         else:
             entries = islice(self.entries(), i - 1, i)
         entries = list(entries)
