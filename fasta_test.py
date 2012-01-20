@@ -5,7 +5,7 @@ import unittest
 
 class TestFastaParser(unittest.TestCase):
 
-    test_file = "test.fna"
+    test_file = "fasta/test.fna"
     sample_gis = [197313646L, 197313649L, 197313647L, 215983060L, 32452934L]
 
     valid_header=">gi|355477125|ref|NW_001493874.3| Bos taurus breed Hereford chromosome 1 genomic scaffold, alternate assembly Btau_4.6.1 Chr1.scaffold45"
