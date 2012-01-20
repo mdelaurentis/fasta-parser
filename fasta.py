@@ -7,13 +7,14 @@ import os
 import sys
 import logging
 
+# Set up logging. TODO: I'm not to familiar with Python logging; there
+# may be a more idiomatic way to do it, in a config file or something.
 logger = logging.getLogger("fasta")
 hdlr = logging.FileHandler('fasta.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr) 
 logger.setLevel(logging.WARNING)
-
 
 class OutOfBoundsException(Exception):
     pass
