@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from fasta import FastaParser, IndexException
+from fasta import FastaParser
 import sys
 import argparse
 
@@ -23,11 +23,8 @@ def do_show(args):
     parser = FastaParser(args.infile)
     if args.nth is not None:
         print parser.entry(args.nth)
-    elif args.start is None and args.stop is None:
-        for e in parser.entries():
-            print e
     else:
-        for e in parser.entry_range(args.start, args.stop):
+        for e in parser.entries():
             print e
 
 def do_count(args):
@@ -54,12 +51,6 @@ parser_clear.set_defaults(func=do_clear)
 
 # The show action
 parser_show = subparsers.add_parser("show", help="Show some entries")
-parser_show.add_argument("--start",
-                          help="The index of the first entry to show",
-                          type=int)
-parser_show.add_argument("--stop",
-                          help="The index of the last entry to show",
-                          type=int)
 parser_show.add_argument("--nth",
                           help="The index of the entry to show",
                           type=int)
