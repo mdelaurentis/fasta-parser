@@ -88,3 +88,21 @@ You can see an individual entry:
 Or all entries:
 
     > ./parse_fasta show vertebrate_mammalian.2.rna.fna 
+
+Possible Enhancements
+=====================
+
+Validation
+----------
+
+I am currently not doing much to validate the file. For header lines,
+I'm just stripping off the initial '>' character, splitting on '|' and
+expecting the fields to be in the proper order. It might be good to
+validate the gi number and accession number. For sequence lines, I'm
+accepting any text. It might be good to ensure that the sequence
+consists only of valid characters.
+
+Compression
+-----------
+
+It would be interesting (and not hard) to allow the parser to read directly from a compressed file.

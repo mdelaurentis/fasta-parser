@@ -58,8 +58,8 @@ class FastaParser:
                 "Couldn't load index at %s, proceeding without index for %s\n"
                 % (self.index_filename, self.filename))
 
-    def save_index(self, force=False):
-        """Saves the index to the filename specified in my
+    def save_index(self):
+        """Save the index to the filename specified in the
         index_filename property."""
         self.index = [e.pos for e in self.entries()]
         logger.info("Saving index for %s" % self.filename)
@@ -68,16 +68,17 @@ class FastaParser:
         outfile.close()
 
     def clear_index(self):
-        """Removes my index file."""
+        """Remove the index file."""
         try:
             os.remove(self.index_filename)
         except:
             logger.warn("Warning: couldn't clear index")
         
     def _parse_header_line(self, text):
+        
         """Attempt to parse the given text as a FASTA header line and
         create an Entry out of it. If the line does not appear to be a
-        FASTA header line, returns None, otherwise returns the new
+        FASTA header line, return None, otherwise return the new
         Entry."""
 
         if len(text) == 0 or text[0] != ">":
@@ -87,7 +88,8 @@ class FastaParser:
         return Entry(long(gi), accession, description)
 
     def entries(self, offset=None):
-        """Returns a generator of the sequence of entries in the
+        
+        """Return a generator of the sequence of entries in the
         file. If offset is provided, it must be the byte offset into
         the file where I should start parsing."""
 
@@ -138,8 +140,9 @@ class FastaParser:
         return
 
     def entry(self, i):
-        """Returns the ith entry (starting numbering at 1), or raises
-        an OutOfBoundsException if i is outside the acceptable range."""
+        
+        """Return the ith entry (starting numbering at 1), or raise an
+        OutOfBoundsException if i is outside the acceptable range."""
 
         if i < 1:
             raise OutOfBoundsException(
@@ -165,21 +168,21 @@ class FastaParser:
         return list(entries)[0]
 
     def first(self):
-        """Returns the first entry in the file or raises an
+        """Return the first entry in the file or raise an
         OutOfBoundsException if there are no entries."""
         return self.entry(1)
 
     def last(self):
-        """Returns the last entry in the file or raises an
+        """Return the last entry in the file or raise an
         OutOfBoundsException if there are no entries."""
         return self.entry(len(self))
 
     def count(self):
-        """Returns the number of entries in the file."""
+        """Return the number of entries in the file."""
         if self.index is not None:
             return len(self.index)
         return sum(1 for e in self.entries())
 
     def __len__(self):
-        """Returns the number of entries in the file."""
+        """Return the number of entries in the file."""
         return self.count()
