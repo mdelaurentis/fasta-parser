@@ -5,9 +5,15 @@ import pickle
 from itertools import islice
 import os
 import sys
+import logging
 
-class IndexException(Exception):
-    pass
+logger = logging.getLogger("fasta")
+hdlr = logging.FileHandler('fasta.log')
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr) 
+logger.setLevel(logging.WARNING)
+
 
 class OutOfBoundsException(Exception):
     pass
@@ -45,7 +51,7 @@ class FastaParser:
                 self.index = pickle.load(infile)
             infile.close()
         except IOError:
-            sys.stderr.write(
+            logger.warn(
                 "Couldn't load index at %s, proceeding without index for %s\n"
                 % (self.index_filename, self.filename))
 
@@ -62,7 +68,7 @@ class FastaParser:
         try:
             os.remove(self.index_filename)
         except:
-            sys.stderr.write("Warning: couldn't clear index")
+            logger.warn("Warning: couldn't clear index")
         
     def _parse_header_line(self, text):
         """Attempt to parse the given text as a FASTA header line and
