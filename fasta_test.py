@@ -80,6 +80,13 @@ class TestFastaParser(unittest.TestCase):
 
     def test_index(self):
         self.parser().save_index()
+
+    def test_format_sequence(self):
+        format4 = lambda seq: Entry(0, None, None, seq)._format_sequence(4)
+        self.assertEquals("abcd\nefgh\nijkl", format4("abcdefghijkl"))
+        self.assertEquals("abcd\nefgh\nijk", format4("abcdefghijk"))
+        self.assertEquals("abcd\nefgh\ni", format4("abcdefghi"))
+        
         
 if __name__ == '__main__':
     unittest.main()

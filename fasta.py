@@ -33,7 +33,13 @@ class Entry:
         header_parts = ("gi", str(self.gi),
                         "ref", self.accession,
                         self.description)
-        return ">" + "|".join(header_parts) + "\n" + self.sequence
+        return ">" + "|".join(header_parts) + "\n" + self._format_sequence()
+
+    def _format_sequence(self, max_len=80):
+        subsequences = []
+        for i in range(0, len(self.sequence), max_len):
+            subsequences.append(self.sequence[i:i+max_len])
+        return "\n".join(subsequences)
             
 class FastaParser:
     """Parses fasta files. Once we reach the end of a file foo, we
