@@ -1,20 +1,14 @@
 #!/usr/bin/env python
 
-import unittest
 import pickle
 from itertools import islice
 import os
-import sys
 import logging
 
 # Set up logging. TODO: I'm not too familiar with Python logging; there
 # may be a more idiomatic way to do it, in a config file or something.
 logger = logging.getLogger("fasta")
-hdlr = logging.FileHandler('fasta.log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr) 
-logger.setLevel(logging.WARNING)
+logging.basicConfig(filename="fasta.log")
 
 class OutOfBoundsException(Exception):
     """An exception thrown when someone attempts to access by index an
@@ -68,6 +62,7 @@ class FastaParser:
         """Saves the index to the filename specified in my
         index_filename property."""
         self.index = [e.pos for e in self.entries()]
+        logger.info("Saving index for %s" % self.filename)
         with open(self.index_filename, "w") as outfile:
             pickle.dump(self.index, outfile)
         outfile.close()
@@ -143,8 +138,8 @@ class FastaParser:
         return
 
     def entry(self, i):
-        """Returns the ith entry (starting numbering at 1), or None if
-        i is outside the acceptable range."""
+        """Returns the ith entry (starting numbering at 1), or raises
+        an OutOfBoundsException if i is outside the acceptable range."""
 
         if i < 1:
             raise OutOfBoundsException(
@@ -161,7 +156,7 @@ class FastaParser:
             offset = self.index[i - 1]
             entries = islice(self.entries(offset), 0, 1)
 
-        # Otherwise I need to 
+        # Otherwise I need to just skip over i - 1 entries
         else:
             entries = islice(self.entries(), i - 1, i)
         entries = list(entries)
@@ -170,13 +165,13 @@ class FastaParser:
         return list(entries)[0]
 
     def first(self):
-        """Returns the first entry in the file or None if there are no
-        entries."""
+        """Returns the first entry in the file or raises an
+        OutOfBoundsException if there are no entries."""
         return self.entry(1)
 
     def last(self):
-        """Returns the last entry in the file or None if there are no
-        entries."""
+        """Returns the last entry in the file or raises an
+        OutOfBoundsException if there are no entries."""
         return self.entry(len(self))
 
     def count(self):
