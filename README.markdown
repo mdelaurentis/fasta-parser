@@ -36,7 +36,7 @@ You can index the file by calling save_index() on the parser (or
 `running parse_fasta index` at the command line). To index the file,
 the parser simply traverses through the file and records the byte
 offset of the start of each entry. It stores on disk an array mapping
-the entries sequence number in the file to its byte offset. Once a
+the entry's sequence number in the file to its byte offset. Once a
 file is indexed, the parser handles requests for a particular entry by
 seeking to that point in the file rather than reading in the whole file.        
 
@@ -81,7 +81,7 @@ Show
 You can see an individual entry:
 
     > ./parse_fasta show --nth 1000 vertebrate_mammalian.2.rna.fna 
-    >gi|291384767|ref|XM_002709208.1| PREDICTED: Oryctolagus cuniculus hypotheti    cal protein LOC100345993 (LOC100345993), mRNA
+    >gi|291384767|ref|XM_002709208.1| PREDICTED: Oryctolagus cuniculus hypothetical protein LOC100345993 (LOC100345993), mRNA
     ATGGCGGGAGGGAAGGCCACCTTGGAATTTCTTCCCGAGTCACCCCCGG...
     -- snip --
 
