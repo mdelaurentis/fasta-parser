@@ -2,11 +2,14 @@
 
 import unittest
 import pickle
-from itertools import dropwhile, takewhile
+from itertools import islice
 import os
 import sys
 
 class IndexException(Exception):
+    pass
+
+class OutOfBoundsException(Exception):
     pass
 
 class Entry:
@@ -59,7 +62,7 @@ class FastaParser:
         try:
             os.remove(self.index_filename)
         except:
-            raise IndexException("Couldn't clear index")
+            sys.stderr.write("Warning: couldn't clear index")
         
     def _parse_header_line(self, text):
         """Attempt to parse the given text as a FASTA header line and
@@ -73,31 +76,30 @@ class FastaParser:
         (_, gi, _, accession, description) = parts
         return Entry(long(gi), accession, description)
 
-    def entries(self):
-        """Returns a generator of the sequence of all
-        the entries in the file."""
-        return self._parse()
+    def _position(self, entry_num):
+        if entry_num < 1:
+            raise OutOfBoundsException("Index must be greater than 0: " + str(entry_num))
+        if self.index is None:
+            return None
+        if entry_num > len(self.index):
+            raise OutOfBoundsException("No entry with number " + str(entry_num))
+        return self.index[entry_num - 1]
 
-    def _parse(self, start=None, stop=None):
+    def entries(self, offset=None):
         """Returns a generator of the sequence of entries in the
-        file. If start is provided, it must be the byte offset into
-        the file where I should start parsing. If stop is provided, it
-        must be the byte offset where I should stop parsing. If I
-        reach the end of the file, I will set my index property so
-        that the ith entry in the index points to the position of the
-        ith entry in the file."""
-        
-        entry = None
-        counter = 0
+        file. If offset is provided, it must be the byte offset into
+        the file where I should start parsing."""
 
+        entry = None
+        
         with open(self.filename) as infile:
-            if start is not None:
-                infile.seek(start)
+            if offset is not None:
+                infile.seek(offset)
             while True:
                 pos = infile.tell()
-
                 line = infile.readline()
-                if line == "" or (stop is not None and pos >= stop):
+                                
+                if line == "":
                     break
                 line = line.rstrip("\n")
 
@@ -123,16 +125,30 @@ class FastaParser:
                             "%s does not appear to be a valid FASTA file" % self.filename)
                     entry.sequence += line
 
-        yield entry
+        if entry is not None:
+            yield entry
         infile.close()
         return
 
     def entry(self, i):
         """Returns the ith entry (starting numbering at 1), or None if
         i is outside the acceptable range."""
-        
-        entries = list(self.entry_range(i, i+1))
-        return None if len(entries) == 0 else entries[0]
+
+        if i < 1:
+            raise OutOfBoundsException("Index must be greater than 0: " + str(i))
+        entries = None
+
+        if self.index is not None:
+            if i > len(self):
+                raise OutOfBoundsException("No entry with number " + str(i))
+            offset = self.index[i - 1]
+            entries = islice(self.entries(offset), 0, 1)
+        else:
+            entries = islice(self.entries(), i - 1, i)
+        entries = list(entries)
+        if len(entries) == 0:
+            raise OutOfBoundsException("No entry with number " + str(i))
+        return list(entries)[0]
 
     def first(self):
         """Returns the first entry in the file or None if there are no
@@ -144,52 +160,6 @@ class FastaParser:
         entries."""
         return self.entry(len(self))
 
-
-    def _entry_range_from_index(self, start, stop):
-        """Parses the entries in the given range from the file using
-        the index (both start and stop are inclusive). This should be
-        much faster than _entry_range_from_stream for ranges that skip
-        over lots of entries in the top of the file."""
-
-        # If start is after the acceptable range or stop is before it,
-        # we shouldn't do anything at all.
-        if start > self.count() or stop < 1:
-            return ()
-
-        startpos = None
-        stoppos = None
-        # Set startpos and stoppos if they are within the range.
-        if start > 0:
-            startpos = self.index[start-1] 
-        if stop <= self.count():
-            stoppos = self.index[stop]
-        
-        return self._parse(startpos, stoppos)
-
-    def _entry_range_from_stream(self, start, stop):
-        """Returns the entries in the given range (inclusive) from the
-        file without using an index. This will only be called on files
-        that are not yet indexed."""
-        
-        i = 1
-        for e in self.entries():
-            if i > stop:
-                return
-            if i >= start:
-                yield e
-            i += 1
-            
-    def entry_range(self, start, stop):
-        """Returns the subsequence of entries in the range from start
-        to stop (both inclusive), starting at 1 for the first
-        entry. If start or stop is outside the actual range of
-        indices, simply ignores the parts of the range that are
-        invalid."""
-
-        if self.index is None:
-            return self._entry_range_from_stream(start, stop)
-        return self._entry_range_from_index(start, stop)
-
     def count(self):
         """Returns the number of entries in the file."""
         if self.index is not None:
@@ -199,84 +169,3 @@ class FastaParser:
     def __len__(self):
         """Returns the number of entries in the file."""
         return self.count()
-
-################################################################################
-# Tests
-
-
-class TestFastaParser(unittest.TestCase):
-
-    test_file = "test.fna"
-    sample_gis = [197313646L, 197313649L, 197313647L, 215983060L, 32452934L]
-
-    valid_header=">gi|355477125|ref|NW_001493874.3| Bos taurus breed Hereford chromosome 1 genomic scaffold, alternate assembly Btau_4.6.1 Chr1.scaffold45"
-
-    first_entry = Entry(197313646L, "NR_001588.2", " Homo sapiens Shwachman-Bodian-Diamond syndrome pseudogene 1 (SBDSP1), transcript variant 3, non-coding RNA", "CCTTTTTGGGCGTGGAAAGATGGCGGTAAAAGCCACAATGCGCAGGCGTCATCGCTCACTTCTCCCCTCCCGGCTTCTGCTCCACCTGACGCCTGCGCAGTAAGTAAGCCTGCCAGACACGCTGTGGCGGCTGCCTGAAGCTAGTGAGTCGCGGCGCCGCGCACTTGTGGTTGGGTCAGTGCCGCGCGCCGCTCGGTCGTTACCGCGAGGCGCTGGTGGCCTTCAGGCTGGACGGCGCGGGTCAGCCCTGGTTTGCCGGCTTCTGGGTCTTTGAACAGCCGCGATGTCGATCTTCACCCCCACCAACCAGATCCGCCTAACCAATGTGGCCGTGGTACGGATGAAGCGCGCCAGGAAGCGCTTCGAAATCGCCTGCTACAGAAACAAGGTCGTCGGCTGGCGGAGCGGCTTGGAAAAAGACCTTGATGAAGTTCTGCAGACCCACTCAGTGTTTGTAAATGTTTCCTAAGGTCAGGTTGCCAAGAAGGAAGATCTCATCAGTGCGTTTGGAACAGATGACCAAACTGAAATCTATTTTGACTAAAGGAGAAGTTCAAGTATCAGATAAAGACACACACAACTGGAGCAGATGTTTAGGGACATTGCAATTATTGTGGCAGACAAATGTGTGACTCCTGAAACAAAGAGACCATACACCGTGATCCTTATTGAGAGAGCCATGAAGGACATCCACTATTTGGTGAAAACCAACAGGAGTACAAAACAGCAGGCTTTGGAAGTGATAAAGCAGTTAAAAGAGAAAATGAAGATAGAACGTGCTCACATGAGGCTTCAGTTCATCCTTCCAGTGAATGAAGGCAAGAAGCTGAAAGAAAAGCTCAAGCCACTGATCAAGGTCATAGAAAGTAAAGATTATGGCCAACAGTTAGAAATCGTAAGAGTCAAATATTTTCTTTGCTTCATGTTACCTAAATATTGTATTCTCTAGTAATAAATTTGTAGCAAACATTCAAAAAAAAAAAAAAAAAAAA")
-
-    def parser(self):
-        return FastaParser(self.test_file)
-
-    def test_parse_header_line(self):
-        fp = self.parser()
-        entry = fp._parse_header_line(self.valid_header)
-        self.assertEquals(355477125, entry.gi)
-        self.assertEquals("NW_001493874.3", entry.accession)
-        self.assertEquals(" Bos taurus breed Hereford chromosome 1 genomic scaffold, alternate assembly Btau_4.6.1 Chr1.scaffold45", entry.description)
-
-    def test_parse_header_line_returns_none(self):
-        fp = self.parser()
-        self.assertIsNone(fp._parse_header_line("foobar"))
-
-    def test_len(self):
-        fp = self.parser()
-        self.assertEquals(5, len(fp))
-        self.assertEquals(5, len(fp))
-
-    def test_entries(self):
-        fp = self.parser()
-        entries = list(fp.entries())
-        self.assertEquals(self.first_entry.gi, entries[0].gi)
-        self.assertEquals(self.first_entry.accession, entries[0].accession)
-        self.assertEquals(self.first_entry.description, entries[0].description)
-        self.assertEquals(self.first_entry.sequence, entries[0].sequence)
-
-    def test_entry_range(self):
-        entries = self.parser().entry_range(2, 4)
-        expected = self.sample_gis[1:4]
-        got = [e.gi for e in entries]
-        self.assertEquals(expected, got)
-
-    def test_entry_range_ignores_invalid_start(self):
-        expected = self.sample_gis[0:3]
-        got = [e.gi for e in self.parser().entry_range(-10, 3)]
-        self.assertEquals(expected, got)
-
-    def test_entry_range_ignores_invalid_stop(self):
-        expected = self.sample_gis[2:]
-        got = [e.gi for e in self.parser().entry_range(3, 10)]
-        self.assertEquals(expected, got)
-
-    def test_entry(self):
-        expected = self.sample_gis[2]
-        got = self.parser().entry(3).gi
-        self.assertEquals(expected, got)
-
-    def test_invalid_entry(self):
-        e = self.parser().entry(17)
-        self.assertIsNone(self.parser().entry(17))
-
-    def test_first(self):
-        expected = self.sample_gis[0]
-        got = self.parser().first().gi
-        self.assertEquals(expected, got)
-
-    def test_last(self):
-        expected = self.sample_gis[4]
-        got = self.parser().last().gi
-        self.assertEquals(expected, got)
-
-    def test_index(self):
-        self.parser().save_index()
-        
-if __name__ == '__main__':
-    unittest.main()

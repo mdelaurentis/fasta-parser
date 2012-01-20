@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from fasta import FastaParser, Entry
+from fasta import FastaParser, Entry, OutOfBoundsException
 import unittest
 
 class TestFastaParser(unittest.TestCase):
@@ -28,7 +28,12 @@ class TestFastaParser(unittest.TestCase):
 
     def test_len(self):
         fp = self.parser()
+        fp.clear_index()
         self.assertEquals(5, len(fp))
+
+    def test_indexed_len(self):
+        fp = self.parser()
+        fp.save_index()
         self.assertEquals(5, len(fp))
 
     def test_entries(self):
@@ -39,30 +44,29 @@ class TestFastaParser(unittest.TestCase):
         self.assertEquals(self.first_entry.description, entries[0].description)
         self.assertEquals(self.first_entry.sequence, entries[0].sequence)
 
-    def test_entry_range(self):
-        entries = self.parser().entry_range(2, 4)
-        expected = self.sample_gis[1:4]
-        got = [e.gi for e in entries]
-        self.assertEquals(expected, got)
-
-    def test_entry_range_ignores_invalid_start(self):
-        expected = self.sample_gis[0:3]
-        got = [e.gi for e in self.parser().entry_range(-10, 3)]
-        self.assertEquals(expected, got)
-
-    def test_entry_range_ignores_invalid_stop(self):
-        expected = self.sample_gis[2:]
-        got = [e.gi for e in self.parser().entry_range(3, 10)]
-        self.assertEquals(expected, got)
-
     def test_entry(self):
         expected = self.sample_gis[2]
-        got = self.parser().entry(3).gi
-        self.assertEquals(expected, got)
+        fp = self.parser()
+        fp.clear_index()
+        self.assertEquals(expected, fp.entry(3).gi)
+
+    def test_indexed_entry(self):
+        expected = self.sample_gis[2]
+        fp = self.parser()
+        fp.save_index()
+        self.assertEquals(expected, fp.entry(3).gi)
 
     def test_invalid_entry(self):
-        e = self.parser().entry(17)
-        self.assertIsNone(self.parser().entry(17))
+        fp = self.parser()
+        fp.clear_index()
+        self.assertRaises(OutOfBoundsException, fp.entry, 17)
+        self.assertRaises(OutOfBoundsException, fp.entry, -1)
+
+    def test_indexed_invalid_entry(self):
+        fp = self.parser()
+        fp.save_index()
+        self.assertRaises(OutOfBoundsException, fp.entry, 17)
+        self.assertRaises(OutOfBoundsException, fp.entry, -1)        
 
     def test_first(self):
         expected = self.sample_gis[0]
