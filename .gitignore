@@ -1,3 +1,6 @@
 .\#*
 *.idx
 *.pyc
+MANIFEST
+fasta.log
+dist
