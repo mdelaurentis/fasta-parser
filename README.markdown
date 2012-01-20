@@ -2,7 +2,7 @@
 Contents
 ========
 
-fasta.py is a module with two classes:
+fasta/parser.py is a module with two classes:
 
 * Entry - Represents a single entry in a fasta file.
 * FastaParser - A parser that is initialized with the name of a fasta

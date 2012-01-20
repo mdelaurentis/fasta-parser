@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from fasta import FastaParser, Entry, OutOfBoundsException
+from fasta.parser import FastaParser, Entry, OutOfBoundsException
 import unittest
 
 class TestFastaParser(unittest.TestCase):
