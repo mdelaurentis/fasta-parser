@@ -29,13 +29,16 @@ Indexing
 
 FastaParser has two modes of operation: index and non indexed.
 
-In non-indexed mode, all accesses require the parser to read sequentially through the file.
+In non-indexed mode, all accesses require the parser to read
+sequentially through the file.
 
-If you ask it to index a file (by calling save_index()) it will
-traverse the file and record the start position of each entry. It then
-saves that index in an *.idx file. For all subsequent random accesses
-it will seek to the appropriate position in the file and start reading
-entries from there.
+You can index the file by calling save_index() on the parser (or
+`running parse_fasta index` at the command line). To index the file,
+the parser simply traverses through the file and records the byte
+offset of the start of each entry. It stores on disk an array mapping
+the entries sequence number in the file to its byte offset. Once a
+file is indexed, the parser handles requests for a particular entry by
+seeking to that point in the file rather than reading in the whole file.        
 
 Command-Line Interface
 ======================
@@ -49,20 +52,39 @@ Index
 
 `parse_fasta index <infile>` will force the index for infile to be created.
 
+    > ./parse_fasta index vertebrate_mammalian.2.rna.fna 
+
 Count
 -----
 
 `parse_fasta count <infile>` while print the number of entries in infile. It will also create the index if it doesn't already exist. You can use this to see the speedup that the index provides:
 
-TODO: Show example
+    > time ./parse_fasta count vertebrate_mammalian.2.rna.fna 
+    I have 30935 entries
+    
+    real    0m2.214s
+    user    0m2.158s
+    sys     0m0.053s
+    mike@trc459 ~/src/fasta-parser
+    > ./parse_fasta index vertebrate_mammalian.2.rna.fna 
+    mike@trc459 ~/src/fasta-parser
+    > time ./parse_fasta count vertebrate_mammalian.2.rna.fna 
+    I have 30935 entries
+    
+    real    0m0.173s
+    user    0m0.151s
+    sys     0m0.017s
 
 Show
 ----
 
 You can see an individual entry:
 
-TODO: Show example
+    > ./parse_fasta show --nth 1000 vertebrate_mammalian.2.rna.fna 
+    >gi|291384767|ref|XM_002709208.1| PREDICTED: Oryctolagus cuniculus hypotheti    cal protein LOC100345993 (LOC100345993), mRNA
+    ATGGCGGGAGGGAAGGCCACCTTGGAATTTCTTCCCGAGTCACCCCCGG...
+    -- snip --
 
 Or all entries:
 
-TODO: Show example
+    > ./parse_fasta show vertebrate_mammalian.2.rna.fna 
